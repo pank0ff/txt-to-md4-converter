@@ -25,10 +25,10 @@ struct DataRecord {
 	unsigned int batt_charge_in_w;
 	unsigned int cpu_temp;
 	unsigned int gpu_temp;
-	double c_in;
-	double c_out;
-	double v_in;
-	double v_out;
+	unsigned int c_in;
+	unsigned int c_out;
+	unsigned int v_in;
+	unsigned int v_out;
 	unsigned int solar_charge_temp;
 	unsigned int drive_mode_state;
 	unsigned int wire_charge_state;
@@ -60,7 +60,10 @@ std::vector<DataRecord> parseInputFile(const std::string& filename) {
 	std::ifstream file(filename);
 	std::string line;
 
-	while (std::getline(file, line)) {
+	std::getline(file, line);
+
+	while (std::getline(file, line))
+	{
 		std::string datetime;
 		std::string car_id;
 		time_t timestamp;
@@ -159,10 +162,10 @@ std::vector<DataRecord> parseInputFile(const std::string& filename) {
 		record.batt_charge_in_w = batt_charge_in_w;
 		record.cpu_temp = cpu_temp;
 		record.gpu_temp = gpu_temp;
-		record.c_in = c_in;
-		record.c_out = c_out;
-		record.v_in = v_in;
-		record.v_out = v_out;
+		record.c_in = (unsigned int)(c_in * 100);
+		record.c_out = (unsigned int)(c_out * 100);
+		record.v_in = (unsigned int)(v_in * 100);
+		record.v_out = (unsigned int)(v_out * 100);
 		record.solar_charge_temp = solar_charge_temp;
 		record.drive_mode_state = drive_mode_state;
 		record.wire_charge_state = wire_charge_state;
@@ -178,6 +181,8 @@ std::vector<DataRecord> parseInputFile(const std::string& filename) {
 		record.timestamp = parseDatetime(datetime);
 
 		records.push_back(record);
+
+		std::cout << " " << record.rpm << " " << record.batt_temp << " " << record.engine_temp << " " << record.speed << " " << record.mileage << " " << record.estimated_mileage << " " << record.batt_charge_in_perc << " " << record.batt_charge_in_w << " " << record.cpu_temp << " " << record.gpu_temp << " " << record.c_in << " " << record.c_out << " " << record.v_in << " " << record.v_out << " " << record.solar_charge_temp << " " << record.drive_mode_state << " " << record.wire_charge_state << " " << record.solar_charge_state << " " << record.engine_error_state << " " << record.parking_brake_state << " " << record.hazard_state << " " << record.right_indicator_state << " " << record.high_beam_lights_state << " " << record.low_beam_lights_state << " " << record.position_lights_state << " " << record.left_indicator_state << std::endl;
 	}
 
 	return records;
@@ -268,38 +273,30 @@ int main(int argc, char* argv[])
 		M4TXBlock dgan("AcqName");
     cg->setAcqName(*(m4Block*)&dgan);
 #endif
-		cg->setRecordSize(8+4,0);
+		cg->setRecordSize(76/*8+4*/,0);
 	  dg->Save(true,true);
 
     // add the TIME channel
-    M4CNBlock *cn=cg->addChannel(new M4CNBlock(CN_T_MASTER));
+		M4CNBlock *cn=cg->addChannel(new M4CNBlock(CN_T_MASTER));
 		cn->cn_sync_type |= CN_S_TIME;
-	  cg->Save(true,true);
-#ifdef WIN32
+		cg->Save(true,true);
 		cn->setComment(*(m4Block*)&M4TXBlock("Time Channel"));
 		cn->setName(*(m4Block*)&M4TXBlock("Timestamp"));
 		//cn->setConversion(*(M4CCBlock*)&M4CCLinear(0.0031));
-#else
-		M4TXBlock cdc("Time Channel");
-    cn->setComment(*(m4Block*)&cdc);
-		M4TXBlock cnn("Time");
-    cn->setName(*(m4Block*)&cnn);
-		M4CCLinear cncc(0.0031);
-    cn->setConversion(*(M4CCBlock*)&cncc);
-#endif
 		cn->setLocation(CN_D_UINT_LE,0*8,8*8); // data type: uint 64
 		M4TXBlock tx_time_unit("s");
-    tx_time_unit.Create(&m4,3);
+		tx_time_unit.Create(&m4,3);
 		tx_time_unit.Save(true,true);
 		cn->setLink( m4CNRecord::cn_md_unit, tx_time_unit.m_At);
 		cn->Save();
+
     // add the Value channel; CAUTION this will delete the cn!
-    cn=cg->addChannel(new M4CNBlock(CN_T_FIXEDLEN));
+		cn=cg->addChannel(new M4CNBlock(CN_T_FIXEDLEN));
 		M4TXBlock cnc("Value Channel");
-    cn->setComment(*(M4CCBlock*)&cnc);
+		cn->setComment(*(M4CCBlock*)&cnc);
 		M4TXBlock cnname("RPM");
-    cn->setName(*(M4CCBlock*)&cnname);
-    cn->setLocation(CN_D_UINT_LE,8*8,4*8); // data type: DWORD
+		cn->setName(*(M4CCBlock*)&cnname);
+		cn->setLocation(CN_D_UINT_LE,8*8,4*8); // data type: DWORD
 		M4TXBlock rpm_value_unit("rpm");
 		rpm_value_unit.Create(&m4,3);
 		rpm_value_unit.Save(true,true);
@@ -314,7 +311,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Battery temperature"));
 		cn->setLocation(CN_D_UINT_LE, 12 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock bat_temp_value_unit("C");
-		bat_temp_value_unit.Create(&m4, 1);
+		bat_temp_value_unit.Create(&m4, 0);
 		bat_temp_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, bat_temp_value_unit.m_At);
 		cn->Save();
@@ -325,7 +322,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Engine temperature"));
 		cn->setLocation(CN_D_UINT_LE, 13 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock eng_temp_value_unit("C");
-		eng_temp_value_unit.Create(&m4, 1);
+		eng_temp_value_unit.Create(&m4, 0);
 		eng_temp_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, eng_temp_value_unit.m_At);
 		cn->Save();
@@ -336,7 +333,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Speed"));
 		cn->setLocation(CN_D_UINT_LE, 14 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock speed_value_unit("km/h");
-		speed_value_unit.Create(&m4, 1);
+		speed_value_unit.Create(&m4, 0);
 		speed_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, speed_value_unit.m_At);
 		cn->Save();
@@ -369,7 +366,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Battery charge in percentage"));
 		cn->setLocation(CN_D_UINT_LE, 23 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock batt_charge_in_perc_value_unit("%");
-		batt_charge_in_perc_value_unit.Create(&m4, 1);
+		batt_charge_in_perc_value_unit.Create(&m4, 0);
 		batt_charge_in_perc_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, batt_charge_in_perc_value_unit.m_At);
 		cn->Save();
@@ -391,7 +388,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("CPU temp"));
 		cn->setLocation(CN_D_UINT_LE, 28 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock cpu_temp_value_unit("C");
-		cpu_temp_value_unit.Create(&m4, 1);
+		cpu_temp_value_unit.Create(&m4, 0);
 		cpu_temp_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, cpu_temp_value_unit.m_At);
 		cn->Save();
@@ -402,7 +399,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("GPU temp"));
 		cn->setLocation(CN_D_UINT_LE, 29 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock gpu_temp_value_unit("C");
-		gpu_temp_value_unit.Create(&m4, 1);
+		gpu_temp_value_unit.Create(&m4, 0);
 		gpu_temp_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, gpu_temp_value_unit.m_At);
 		cn->Save();
@@ -411,7 +408,7 @@ int main(int argc, char* argv[])
 		M4TXBlock c_in("Current input");
 		cn->setComment(*(M4CCBlock*)&c_in);
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Current input"));
-		cn->setLocation(CN_D_FLOAT_LE, 30 * 8, 4 * 8); // data type: DWORD
+		cn->setLocation(CN_D_UINT_LE, 30 * 8, 4 * 8); // data type: DWORD
 		M4TXBlock c_in_value_unit("A");
 		c_in_value_unit.Create(&m4, 3);
 		c_in_value_unit.Save(true, true);
@@ -422,7 +419,7 @@ int main(int argc, char* argv[])
 		M4TXBlock c_out("Current output");
 		cn->setComment(*(M4CCBlock*)&c_out);
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Current output"));
-		cn->setLocation(CN_D_FLOAT_LE, 34 * 8, 4 * 8); // data type: DWORD
+		cn->setLocation(CN_D_UINT_LE, 34 * 8, 4 * 8); // data type: DWORD
 		M4TXBlock c_out_value_unit("A");
 		c_out_value_unit.Create(&m4, 3);
 		c_out_value_unit.Save(true, true);
@@ -433,7 +430,7 @@ int main(int argc, char* argv[])
 		M4TXBlock v_in("Voltage input");
 		cn->setComment(*(M4CCBlock*)&v_in);
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Voltage input"));
-		cn->setLocation(CN_D_FLOAT_LE, 38 * 8, 4 * 8); // data type: DWORD
+		cn->setLocation(CN_D_UINT_LE, 38 * 8, 4 * 8); // data type: DWORD
 		M4TXBlock v_in_value_unit("V");
 		v_in_value_unit.Create(&m4, 3);
 		v_in_value_unit.Save(true, true);
@@ -444,7 +441,7 @@ int main(int argc, char* argv[])
 		M4TXBlock v_output("Voltage output");
 		cn->setComment(*(M4CCBlock*)&v_output);
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Voltage output"));
-		cn->setLocation(CN_D_FLOAT_LE, 42 * 8, 4 * 8); // data type: DWORD
+		cn->setLocation(CN_D_UINT_LE, 42 * 8, 4 * 8); // data type: DWORD
 		M4TXBlock v_output_value_unit("V");
 		v_output_value_unit.Create(&m4, 3);
 		v_output_value_unit.Save(true, true);
@@ -468,7 +465,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Drive mode state"));
 		cn->setLocation(CN_D_UINT_LE, 50 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock drive_mode_state_value_unit("");
-		drive_mode_state_value_unit.Create(&m4, 1);
+		drive_mode_state_value_unit.Create(&m4, 0);
 		drive_mode_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, drive_mode_state_value_unit.m_At);
 		cn->Save();
@@ -479,7 +476,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Wire charge state"));
 		cn->setLocation(CN_D_UINT_LE, 51 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock wire_charge_state_value_unit("");
-		wire_charge_state_value_unit.Create(&m4, 1);
+		wire_charge_state_value_unit.Create(&m4, 0);
 		wire_charge_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, wire_charge_state_value_unit.m_At);
 		cn->Save();
@@ -490,7 +487,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Solar charge state"));
 		cn->setLocation(CN_D_UINT_LE, 52 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock solar_charge_state_value_unit("");
-		solar_charge_state_value_unit.Create(&m4, 1);
+		solar_charge_state_value_unit.Create(&m4, 0);
 		solar_charge_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, solar_charge_state_value_unit.m_At);
 		cn->Save();
@@ -501,7 +498,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Solar charge state"));
 		cn->setLocation(CN_D_UINT_LE, 53 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock engine_error_state_value_unit("");
-		engine_error_state_value_unit.Create(&m4, 1);
+		engine_error_state_value_unit.Create(&m4, 0);
 		engine_error_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, engine_error_state_value_unit.m_At);
 		cn->Save();
@@ -512,7 +509,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Parking brake state"));
 		cn->setLocation(CN_D_UINT_LE, 54 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock parking_brake_state_value_unit("");
-		parking_brake_state_value_unit.Create(&m4, 1);
+		parking_brake_state_value_unit.Create(&m4, 0);
 		parking_brake_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, parking_brake_state_value_unit.m_At);
 		cn->Save();
@@ -523,7 +520,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Hazard state"));
 		cn->setLocation(CN_D_UINT_LE, 55 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock hazard_state_value_unit("");
-		hazard_state_value_unit.Create(&m4, 1);
+		hazard_state_value_unit.Create(&m4, 0);
 		hazard_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, hazard_state_value_unit.m_At);
 		cn->Save();
@@ -534,7 +531,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Right indicator state"));
 		cn->setLocation(CN_D_UINT_LE, 56 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock right_indicator_state_value_unit("");
-		right_indicator_state_value_unit.Create(&m4, 1);
+		right_indicator_state_value_unit.Create(&m4, 0);
 		right_indicator_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, right_indicator_state_value_unit.m_At);
 		cn->Save();
@@ -545,7 +542,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("High beam state"));
 		cn->setLocation(CN_D_UINT_LE, 57 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock high_beam_lights_state_value_unit("");
-		high_beam_lights_state_value_unit.Create(&m4, 1);
+		high_beam_lights_state_value_unit.Create(&m4, 0);
 		high_beam_lights_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, high_beam_lights_state_value_unit.m_At);
 		cn->Save();
@@ -556,7 +553,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Low beam state"));
 		cn->setLocation(CN_D_UINT_LE, 58 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock low_beam_lights_state_value_unit("");
-		low_beam_lights_state_value_unit.Create(&m4, 1);
+		low_beam_lights_state_value_unit.Create(&m4, 0);
 		low_beam_lights_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, low_beam_lights_state_value_unit.m_At);
 		cn->Save();
@@ -567,7 +564,7 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Position lights state"));
 		cn->setLocation(CN_D_UINT_LE, 59 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock position_lights_state_value_unit("");
-		position_lights_state_value_unit.Create(&m4, 1);
+		position_lights_state_value_unit.Create(&m4, 0);
 		position_lights_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, position_lights_state_value_unit.m_At);
 		cn->Save();
@@ -578,14 +575,14 @@ int main(int argc, char* argv[])
 		cn->setName(*(M4CCBlock*)&M4TXBlock("Left indicator state"));
 		cn->setLocation(CN_D_UINT_LE, 60 * 8, 1 * 8); // data type: DWORD
 		M4TXBlock left_indicator_state_value_unit("");
-		left_indicator_state_value_unit.Create(&m4, 1);
+		left_indicator_state_value_unit.Create(&m4, 0);
 		left_indicator_state_value_unit.Save(true, true);
 		cn->setLink(m4CNRecord::cn_md_unit, left_indicator_state_value_unit.m_At);
 		cn->Save();
 
 		M_UINT32 uiDataRecordSize = cg->cg_data_bytes + dg->dg_rec_id_size; // + rec id
 		// the following code is crucial for the effectiveness of storing/reading the data:
-		M_UINT32 uiNoOfRecords = 100000; // No. of record per block
+		M_UINT32 uiNoOfRecords = dataRecords.size();; // No. of record per block
 		// A data block should be large enough to be read effectively, but small enough to avoid empty space.
 		M_UINT32 uiDataBlockSize = uiDataRecordSize * uiNoOfRecords/2; // a good size for large file is 5 MB per block
 		M_UINT32 rec_id_size = dg->dg_rec_id_size;
@@ -606,7 +603,7 @@ int main(int argc, char* argv[])
 
 		M_UINT8 *pRecord = (M_UINT8*)calloc(uiDataRecordSize,1);
 
-		uiNoOfRecords = dataRecords.size();
+		
 		for (M_UINT32 i=1; i<=uiNoOfRecords; i++)
 		{
 			M_UINT8 *p = pRecord;
@@ -637,14 +634,14 @@ int main(int argc, char* argv[])
 			p += sizeof(M_UINT8);
 			*(M_UINT8*)p = (M_UINT8)dataRecords[i - 1].gpu_temp; // Value
 			p += sizeof(M_UINT8);
-			*(M_REAL*)p = (M_REAL)dataRecords[i - 1].c_in; // Value
-			p += sizeof(M_REAL);
-			*(M_REAL*)p = (M_REAL)dataRecords[i - 1].c_out; // Value
-			p += sizeof(M_REAL);
-			*(M_REAL*)p = (M_REAL)dataRecords[i - 1].v_in; // Value
-			p += sizeof(M_REAL);
-			*(M_REAL*)p = (M_REAL)dataRecords[i - 1].v_out; // Value
-			p += sizeof(M_REAL);
+			*(M_UINT32*)p = (M_UINT32)dataRecords[i - 1].c_in; // Value
+			p += sizeof(M_UINT32);
+			*(M_UINT32*)p = (M_UINT32)dataRecords[i - 1].c_out; // Value
+			p += sizeof(M_UINT32);
+			*(M_UINT32*)p = (M_UINT32)dataRecords[i - 1].v_in; // Value
+			p += sizeof(M_UINT32);
+			*(M_UINT32*)p = (M_UINT32)dataRecords[i - 1].v_out; // Value
+			p += sizeof(M_UINT32);
 			*(M_UINT32*)p = (M_UINT32)dataRecords[i - 1].solar_charge_temp; // Value
 			p += sizeof(M_UINT32);
 			*(M_UINT8*)p = (M_UINT8)dataRecords[i - 1].drive_mode_state; // Value
