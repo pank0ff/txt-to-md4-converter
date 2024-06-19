@@ -1,0 +1,14 @@
+﻿  MDF4_SimpleWriter.cpp
+C:\work\Common\mdFile.h(143,12): warning C4996: 'unlink': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _unlink. See online help for details.
+  (компиляция исходного файла "/MDF4_SimpleWriter.cpp")
+  
+C:\work\Common\mdf4.h(2100,55): warning C4267: return: преобразование из "size_t" в "M_UINT32"; возможна потеря данных
+  (компиляция исходного файла "/MDF4_SimpleWriter.cpp")
+  
+C:\work\MDF4_SimpleWriter\MDF4_SimpleWriter.cpp(66,10): warning C4101: timestamp: неиспользованная локальная переменная
+  (компиляция исходного файла "/MDF4_SimpleWriter.cpp")
+  
+C:\work\MDF4_SimpleWriter\MDF4_SimpleWriter.cpp(609,35): warning C4267: =: преобразование из "size_t" в "M_UINT32"; возможна потеря данных
+  (компиляция исходного файла "/MDF4_SimpleWriter.cpp")
+  
+  MDF4_SimpleWriter.vcxproj -> C:\work\x64\Debug\MDF4_SimpleWriter.exe
