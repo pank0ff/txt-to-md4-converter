@@ -43,6 +43,23 @@ struct DataRecord {
 	unsigned int left_indicator_state;
 };
 
+void replaceNoInfoWithZero(const std::string& filename)
+{
+	std::ifstream inputFile(filename);
+	std::string fileContent((std::istreambuf_iterator<char>(inputFile)), std::istreambuf_iterator<char>());
+	inputFile.close();
+
+	size_t pos = 0;
+	while ((pos = fileContent.find("no info", pos)) != std::string::npos) {
+		fileContent.replace(pos, 7, "0");
+		pos += 1;  // Переходим к следующему символу после замененной строки
+	}
+
+	std::ofstream outputFile(filename);
+	outputFile << fileContent;
+	outputFile.close();
+}
+
 // Helper function to parse datetime string
 time_t parseDatetime(const std::string& datetime) {
 	struct tm tm = {};
@@ -190,6 +207,7 @@ std::vector<DataRecord> parseInputFile(const std::string& filename) {
 
 int main(int argc, char* argv[])
 {
+	replaceNoInfoWithZero("data.txt");
 	std::vector<DataRecord> dataRecords = parseInputFile("data.txt");
 
 	// Find a reasonalbe time stamp:
